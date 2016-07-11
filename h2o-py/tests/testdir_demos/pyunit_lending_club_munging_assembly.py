@@ -11,12 +11,13 @@ from h2o.transforms.preprocessing import *
 
 def lending_club_munging_assembly():
 
-  small_test = [pyunit_utils.locate("bigdata/laptop/lending-club/LoanStats3a.csv")]
+  small_test = pyunit_utils.locate("bigdata/laptop/lending-club/LoanStats3a.csv")
 
   # lending-club munging assembly
   print("Import and Parse data")
 
-  types = {"int_rate":"String", "revol_util":"String", "emp_length":"String", "earliest_cr_line":"String", "issue_d":"String", "last_credit_pull_d":"Factor"}
+  types = {"int_rate": "string", "revol_util": "string", "emp_length": "string", "earliest_cr_line": "string",
+           "issue_d": "string", "last_credit_pull_d": "factor"}
 
   data = h2o.import_file(path=small_test, col_types=types)
   data[["int_rate","revol_util","emp_length"]].show()

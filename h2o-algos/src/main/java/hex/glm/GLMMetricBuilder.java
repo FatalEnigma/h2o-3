@@ -32,7 +32,6 @@ public class GLMMetricBuilder extends MetricBuilderSupervised<GLMMetricBuilder> 
   MetricBuilder _metricBuilder;
   final boolean _intercept;
   private final double [] _ymu;
-
   final boolean _computeMetrics;
   public GLMMetricBuilder(String[] domain, double [] ymu, GLMWeightsFun glmf, int rank, boolean computeMetrics, boolean intercept){
     super(domain == null?0:domain.length, domain);
@@ -180,13 +179,6 @@ public class GLMMetricBuilder extends MetricBuilderSupervised<GLMMetricBuilder> 
     _aic += 2*_rank;
   }
 
-//  @Override
-//  public String toString(){
-//    if(_metricBuilder != null)
-//      return _metricBuilder.toString() + ", explained_dev = " + MathUtils.roundToNDigits(1 - residual_deviance / null_deviance,5);
-//    else return "explained dev = " + MathUtils.roundToNDigits(1 - residual_deviance / null_deviance,5);
-//  }
-
   @Override public ModelMetrics makeModelMetrics(Model m, Frame f, Frame adaptedFrame, Frame preds) {
     GLMModel gm = (GLMModel)m;
     computeAIC();
@@ -208,7 +200,7 @@ public class GLMMetricBuilder extends MetricBuilderSupervised<GLMMetricBuilder> 
       metrics = new ModelMetricsMultinomialGLM(m, f, metricsMultinomial._nobs,metricsMultinomial._MSE, metricsMultinomial._domain, metricsMultinomial._sigma, metricsMultinomial._cm, metricsMultinomial._hit_ratios, metricsMultinomial._logloss, residualDeviance(), null_devince, _aic, nullDOF(), resDOF());
     } else {
       ModelMetricsRegression metricsRegression = (ModelMetricsRegression) metrics;
-      metrics = new ModelMetricsRegressionGLM(m, f, metricsRegression._nobs, metricsRegression._MSE, metricsRegression._sigma, residualDeviance(), residualDeviance()/_wcount, null_devince, _aic, nullDOF(), resDOF());
+      metrics = new ModelMetricsRegressionGLM(m, f, metricsRegression._nobs, metricsRegression._MSE, metricsRegression._sigma, metricsRegression._mean_absolute_error, metricsRegression._root_mean_squared_log_error, residualDeviance(), residualDeviance()/_wcount, null_devince, _aic, nullDOF(), resDOF());
     }
     return gm._output.addModelMetrics(metrics); // Update the metrics in-place with the GLM version
   }

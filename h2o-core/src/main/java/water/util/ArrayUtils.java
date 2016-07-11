@@ -253,6 +253,10 @@ public class ArrayUtils {
     for (int i=0; i<ds.length; i++) ds[i]/=n[i];
     return ds;
   }
+  public static double[] div(double[] ds, double[] n) {
+    for (int i=0; i<ds.length; i++) ds[i]/=n[i];
+    return ds;
+  }
   public static float[] mult(float[] nums, float n) {
 //    assert !Float.isInfinite(n) : "Trying to multiply " + Arrays.toString(nums) + " by  " + n; // Almost surely not what you want
     for (int i=0; i<nums.length; i++) nums[i] *= n;
@@ -1427,15 +1431,9 @@ public class ArrayUtils {
     return r;
   }
 
-  public static int encodeAsInt(byte[] b, int off, int len) {
-    assert len <= 4 : "Cannot encode more then 4 bytes into int: len = " + len;
-    int r = 0;
-    int shift = 0;
-    for(int i = 0; i < len; i++) {
-      r |= (b[i + off] & 0xFF) << shift;
-      shift += 8;
-    }
-    return r;
+  public static int encodeAsInt(byte[] b) {
+    assert b.length == 4 : "Cannot encode more then 4 bytes into int: len = " + b.length;
+    return (b[0]&0xFF)+((b[1]&0xFF)<<8)+((b[2]&0xFF)<<16)+((b[3]&0xFF)<<24);
   }
 
   /** Transform given long numbers into byte array.

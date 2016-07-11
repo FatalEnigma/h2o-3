@@ -378,6 +378,8 @@ public class RequestServer extends HttpServlet {
           parms.put("frame_id", url.substring(10));
           route = findRouteByApiName(method.equals("DELETE")? "deleteFrame" : "frame");
         }
+      } else if (url.startsWith("/3/ModelMetrics/predictions_frame/")){
+        route = findRouteByApiName("makeMetrics");
       }
       //------------------------------------------
 
@@ -417,7 +419,7 @@ public class RequestServer extends HttpServlet {
               e.toString(),
               e.toString(),
               HttpResponseStatus.INTERNAL_SERVER_ERROR.getCode(),
-              new IcedHashMap.IcedHashMapStringObject(),
+              new IcedHashMapGeneric.IcedHashMapStringObject(),
               e);
       Log.err("Caught assertion error: " + error.toString());
       return serveError(error);

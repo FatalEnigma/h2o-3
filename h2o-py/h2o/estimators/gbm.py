@@ -10,13 +10,13 @@ from .estimator_base import H2OEstimator
 class H2OGradientBoostingEstimator(H2OEstimator):
     """
     Gradient Boosting Method
-    ------------------------
+
     Builds gradient boosted trees on a parsed data set, for regression or classification.
     The default distribution function will guess the model type based on the response column type.
-    Otherwise, the response column must be an enum for "bernoulli" or "multinomial", and numeric 
+    Otherwise, the response column must be an enum for "bernoulli" or "multinomial", and numeric
     for all other distributions.
 
-    Parameters (optional, unless specified otherwise)
+    Parameters
     ----------
       model_id : str
         Destination id for this model; auto-generated if not specified.
@@ -28,7 +28,7 @@ class H2OGradientBoostingEstimator(H2OEstimator):
         Id of the validation data frame.
 
       nfolds : int
-        Number of folds for N-fold cross-validation (0 to disable or ≥ 2).
+        Number of folds for N-fold cross-validation (0 to disable or >= 2).
         Default: 0
 
       keep_cross_validation_predictions : bool
@@ -122,7 +122,7 @@ class H2OGradientBoostingEstimator(H2OEstimator):
 
       r2_stopping : float
         Stop making trees when the R^2 metric equals or exceeds this
-        Default: 0.999999
+        Default: 1.79769313486e+308
 
       stopping_rounds : int
         Early stopping based on convergence of stopping_metric. Stop if simple moving average of length k of the
@@ -158,8 +158,8 @@ class H2OGradientBoostingEstimator(H2OEstimator):
         Scale the learning rate by this factor after each tree (e.g., 0.99 or 0.999)
         Default: 1.0
 
-      distribution : "AUTO" | "bernoulli" | "modified_huber" | "multinomial" | "gaussian" | "poisson" | "gamma" |
-                     "tweedie" | "laplace" | "quantile" | "huber"
+      distribution : "AUTO" | "bernoulli" | "multinomial" | "gaussian" | "poisson" | "gamma" | "tweedie" | "laplace" |
+                     "quantile" | "huber"
         Distribution function
         Default: "AUTO"
 

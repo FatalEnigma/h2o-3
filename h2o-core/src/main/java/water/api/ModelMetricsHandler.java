@@ -1,7 +1,6 @@
 package water.api;
 
-import hex.Model;
-import hex.ModelMetrics;
+import hex.*;
 import water.*;
 import water.api.schemas3.*;
 import water.exceptions.H2OIllegalArgumentException;
@@ -74,8 +73,10 @@ class ModelMetricsHandler extends Handler {
   } // class ModelMetricsList
 
   /** Schema for a list of ModelMetricsBaseV3.
-   *  This should be common across all versions of ModelMetrics schemas, so it lives here.   */
-  public static final class ModelMetricsListSchemaV3 extends SchemaV3<ModelMetricsList, ModelMetricsListSchemaV3> {
+   *  This should be common across all versions of ModelMetrics schemas, so it lives here.
+   *  TODO: move to water.api.schemas3
+   *  */
+  public static final class ModelMetricsListSchemaV3 extends RequestSchemaV3<ModelMetricsList, ModelMetricsListSchemaV3> {
     // Input fields
     @API(help = "Key of Model of interest (optional)", json = true)
     public KeyV3.ModelKeyV3 model;
@@ -228,6 +229,69 @@ class ModelMetricsHandler extends Handler {
     return mm;
   }
 
+  public static final class ModelMetricsMaker extends Iced {
+    public String _predictions_frame;
+    public String _actuals_frame;
+    public String[] _domain;
+    public Distribution.Family _distribution;
+    public ModelMetrics _model_metrics;
+  }
+
+  public static final class ModelMetricsMakerSchemaV3 extends SchemaV3<ModelMetricsMaker, ModelMetricsMakerSchemaV3> {
+    @API(help="Predictions Frame.", direction=API.Direction.INOUT)
+    public String predictions_frame;
+
+    @API(help="Actuals Frame.", direction=API.Direction.INOUT)
+    public String actuals_frame;
+
+    @API(help="Domain (for classification).", direction=API.Direction.INOUT)
+    public String[] domain;
+
+    @API(help="Distribution (for regression).", direction=API.Direction.INOUT, values = { "gaussian", "poisson", "gamma", "laplace" })
+    public Distribution.Family distribution;
+
+    @API(help="Model Metrics.", direction=API.Direction.OUTPUT)
+    public ModelMetricsBaseV3 model_metrics;
+  }
+
+  /**
+   * Make a model metrics object from actual and predicted values
+   */
+  @SuppressWarnings("unused") // called through reflection by RequestServer
+  public ModelMetricsMakerSchemaV3 make(int version, ModelMetricsMakerSchemaV3 s) {
+    // parameters checking:
+    if (null == s.predictions_frame) throw new H2OIllegalArgumentException("predictions_frame", "make", s.predictions_frame);
+    Frame pred = DKV.getGet(s.predictions_frame);
+    if (null == pred) throw new H2OKeyNotFoundArgumentException("predictions_frame", "make", s.predictions_frame);
+
+    if (null == s.actuals_frame) throw new H2OIllegalArgumentException("actuals_frame", "make", s.actuals_frame);
+    Frame act = DKV.getGet(s.actuals_frame);
+    if (null == act) throw new H2OKeyNotFoundArgumentException("actuals_frame", "make", s.actuals_frame);
+
+    if (s.domain ==null) {
+      if (pred.numCols()!=1) {
+        throw new H2OIllegalArgumentException("predictions_frame", "make", "For regression problems (domain=null), the predictions_frame must have exactly 1 column.");
+      }
+      ModelMetricsRegression mm = ModelMetricsRegression.make(pred.anyVec(), act.anyVec(), s.distribution);
+      s.model_metrics = new ModelMetricsRegressionV3().fillFromImpl(mm);
+    } else if (s.domain.length==2) {
+      if (pred.numCols()!=1) {
+        throw new H2OIllegalArgumentException("predictions_frame", "make", "For domains with 2 class labels, the predictions_frame must have exactly one column containing the class-1 probabilities.");
+      }
+      ModelMetricsBinomial mm = ModelMetricsBinomial.make(pred.anyVec(), act.anyVec(), s.domain);
+      s.model_metrics = new ModelMetricsBinomialV3().fillFromImpl(mm);
+    } else if (s.domain.length>2){
+      if (pred.numCols()!=s.domain.length) {
+        throw new H2OIllegalArgumentException("predictions_frame", "make", "For domains with " + s.domain.length + " class labels, the predictions_frame must have exactly " + s.domain.length + " columns containing the class-probabilities.");
+      }
+      ModelMetricsMultinomial mm = ModelMetricsMultinomial.make(pred, act.anyVec(), s.domain);
+      s.model_metrics = new ModelMetricsMultinomialV3().fillFromImpl(mm);
+    } else {
+      throw H2O.unimpl();
+    }
+    return s;
+  }
+
   /**
    * Score a frame with the given model and return the metrics AND the prediction frame.
    */
@@ -241,10 +305,10 @@ class ModelMetricsHandler extends Handler {
     if (null == DKV.get(s.frame.name)) throw new H2OKeyNotFoundArgumentException("frame", "predict", s.frame.name);
 
     final ModelMetricsList parms = s.createAndFillImpl();
-    
+
     //predict2 does not return modelmetrics, so cannot handle deeplearning: reconstruction_error (anomaly) or GLRM: reconstruct and archetypes
-    //predict2 can handle deeplearning: deepfeatures and predict 
-    
+    //predict2 can handle deeplearning: deepfeatures and predict
+
     if (s.deep_features_hidden_layer > 0) {
       if (null == parms._predictions_name)
         parms._predictions_name = "deep_features" + Key.make().toString().substring(0, 5) + "_" +
@@ -270,7 +334,7 @@ class ModelMetricsHandler extends Handler {
           predictions = new Frame(Key.make(parms._predictions_name), predictions.names(), predictions.vecs());
           DKV.put(predictions._key, predictions);
         }
-        tryComplete(); 
+        tryComplete();
       }
     };
     j.start(work, parms._frame.anyVec().nChunks());

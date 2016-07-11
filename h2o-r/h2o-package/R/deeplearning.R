@@ -57,7 +57,7 @@
 #' @param loss Loss function: "Automatic", "CrossEntropy" (for classification only), "Quadratic", "Absolute"
 #'        (experimental) or "Huber" (experimental)
 #' @param distribution A \code{character} string. The distribution function of the response.
-#'        Must be "AUTO", "bernoulli", "modified_huber","multinomial", "poisson", "gamma", "tweedie",
+#'        Must be "AUTO", "bernoulli", "multinomial", "poisson", "gamma", "tweedie",
 #'        "laplace", "huber", "quantile" or "gaussian"
 #' @param quantile_alpha Desired quantile for Quantile regression, must be between 0 and 1.
 #' @param huber_alpha Desired quantile for Huber/M-regression (threshold between quadratic and linear loss, must be between 0 and 1).
@@ -76,7 +76,7 @@
 #'        (by stopping_tolerance) for k=stopping_rounds scoring events.
 #'        Can only trigger after at least 2k scoring events. Use 0 to disable.
 #' @param stopping_metric Metric to use for convergence checking, only for _stopping_rounds > 0
-#'        Can be one of "AUTO", "deviance", "logloss", "MSE", "AUC", "r2", "misclassification", or "mean_per_class_error".
+#'        Can be one of "AUTO", "deviance", "logloss", "MSE", "AUC", "misclassification", or "mean_per_class_error".
 #' @param stopping_tolerance Relative tolerance for metric-based stopping criterion (if relative
 #'        improvement is not at least this much, stop).
 #' @param max_runtime_secs Maximum allowed runtime in seconds for model training. Use 0 to disable.
@@ -112,6 +112,8 @@
 #' @param sparsity_beta Sparsity regularization (Experimental).
 #' @param max_categorical_features Max. number of categorical features, enforced via hashing
 #'        Experimental).
+#' @param categorical_encoding Encoding scheme for categorical features, must be "AUTO", "Enum", 
+#         "OneHotInternal", "OneHotExplicit", "Binary" or "Eigen"
 #' @param reproducible Force reproducibility on small data (requires setting the \code{seed} argument and this will be slow - only uses 1 thread).
 #' @param export_weights_and_biases Whether to export Neural Network weights and biases to H2O.
 #'        Frames"
@@ -208,6 +210,7 @@ h2o.deeplearning <- function(x, y, training_frame,
                              average_activation,
                              sparsity_beta,
                              max_categorical_features,
+                             categorical_encoding = c("AUTO","Enum","OneHotInternal","OneHotExplicit","Binary","Eigen"),
                              reproducible=FALSE,
                              export_weights_and_biases=FALSE,
                              offset_column = NULL,
@@ -383,6 +386,8 @@ h2o.deeplearning <- function(x, y, training_frame,
     parms$sparsity_beta <- sparsity_beta
   if(!missing(max_categorical_features))
     parms$max_categorical_features <- max_categorical_features
+  if(!missing(categorical_encoding))
+    parms$categorical_encoding <- categorical_encoding
   if(!missing(reproducible))
     parms$reproducible <- reproducible
   if(!missing(export_weights_and_biases))

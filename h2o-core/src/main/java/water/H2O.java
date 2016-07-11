@@ -9,6 +9,7 @@ import jsr166y.ForkJoinWorkerThread;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
+import org.joda.time.PeriodType;
 import org.reflections.Reflections;
 
 import java.io.File;
@@ -17,6 +18,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -26,6 +28,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,9 +47,11 @@ import water.init.JarHash;
 import water.init.NetworkInit;
 import water.init.NodePersistentStorage;
 import water.nbhm.NonBlockingHashMap;
+import water.parser.ParserService;
 import water.persist.PersistManager;
 import water.util.GAUtils;
 import water.util.Log;
+import water.util.NetworkUtils;
 import water.util.OSUtils;
 import water.util.PrettyPrint;
 
@@ -192,6 +197,8 @@ final public class H2O {
    */
   public static class
     OptArgs {
+    // Prefix of hidden system properties
+    public static final String SYSTEM_PROP_PREFIX = "sys.ai.h2o.";
     //-----------------------------------------------------------------------------------
     // Help and info
     //-----------------------------------------------------------------------------------
@@ -927,7 +934,7 @@ final public class H2O {
    * H2O.fail is intended to be used in code where something should never happen, and if
    * it does it's a coding error that needs to be addressed immediately.  Examples are:
    * AutoBuffer serialization for an object you're trying to serialize isn't available;
-   * there's a typing error on your schema; your switch statement didn't cover all the AST
+   * there's a typing error on your schema; your switch statement didn't cover all the AstRoot
    * subclasses available in Rapids.
    * <p>
    * It should *not* be used when only the single request should fail, it should *only* be
@@ -1273,6 +1280,14 @@ final public class H2O {
    */
   public static InetAddress SELF_ADDRESS;
 
+  /* Global flag to mark this specific cloud instance IPv6 only.
+   * Right now, users have to force IPv6 stack by specifying the following
+   * JVM options:
+   *  -Djava.net.preferIPv6Addresses=true
+   *  -Djava.net.preferIPv6Addresses=false
+   */
+  static final boolean IS_IPV6 = NetworkUtils.isIPv6Preferred() && !NetworkUtils.isIPv4Preferred();
+
   // Place to store temp/swap files
   public static URI ICE_ROOT;
   public static String DEFAULT_ICE_ROOT() {
@@ -1340,14 +1355,21 @@ final public class H2O {
    *  stdout.  This allows for early processing of the '-version' option
    *  without unpacking the jar file and other startup stuff.  */
   static void printAndLogVersion(String[] arguments) {
+    String latestVersion = ABV.getLatestH2OVersion();
     Log.init(ARGS.log_level, ARGS.quiet);
     Log.info("----- H2O started " + (ARGS.client?"(client)":"") + " -----");
     Log.info("Build git branch: " + ABV.branchName());
     Log.info("Build git hash: " + ABV.lastCommitHash());
     Log.info("Build git describe: " + ABV.describe());
-    Log.info("Build project version: " + ABV.projectVersion());
+    Log.info("Build project version: " + ABV.projectVersion() + " (latest version: " + latestVersion + ")");
+    Log.info("Build age: " + PrettyPrint.toAge(ABV.compiledOnDate(), new Date()));
     Log.info("Built by: '" + ABV.compiledBy() + "'");
     Log.info("Built on: '" + ABV.compiledOn() + "'");
+
+    if (ABV.isTooOld()) {
+      Log.warn("\n*** Your H2O version is too old! Please download the latest version " + latestVersion + " from http://h2o.ai/download/ ***");
+      Log.warn("");
+    }
 
     for (AbstractH2OExtension e : H2O.getExtensions()) {
       String n = e.getExtensionName() + " ";
@@ -1784,7 +1806,20 @@ final public class H2O {
     }
 
     // Epic Hunt for the correct self InetAddress
-    NetworkInit.findInetAddressForSelf();
+    Log.info("IPv6 stack selected: " + IS_IPV6);
+    SELF_ADDRESS = NetworkInit.findInetAddressForSelf();
+    // Right now the global preference is to use IPv4 stack
+    // To select IPv6 stack user has to explicitly pass JVM flags
+    // to enable IPv6 preference.
+    if (!IS_IPV6 && SELF_ADDRESS instanceof Inet6Address) {
+      Log.err("IPv4 network stack specified but IPv6 address found: " + SELF_ADDRESS + "\n"
+              + "Please specify JVM flags -Djava.net.preferIPv6Addresses=true and -Djava.net.preferIPv4Addresses=false to select IPv6 stack");
+      H2O.exit(-1);
+    }
+    if (IS_IPV6 && SELF_ADDRESS instanceof Inet4Address) {
+      Log.err("IPv6 network stack specified but IPv4 address found: " + SELF_ADDRESS);
+      H2O.exit(-1);
+    }
 
     // Start the local node.  Needed before starting logging.
     startLocalNode();
@@ -1847,6 +1882,9 @@ final public class H2O {
 
     if (GA != null)
       startGAStartupReport();
+
+    // Log registered parsers
+    Log.info("Registered parsers: " + Arrays.toString(ParserService.INSTANCE.getAllProviderNames(true)));
   }
 
   // Die horribly

@@ -5,7 +5,7 @@ import water.api.API;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public class CloudV3 extends SchemaV3<Iced, CloudV3> {
+public class CloudV3 extends RequestSchemaV3<Iced, CloudV3> {
   /**
    * Data structure to store last tick counts from a given node.
    */
@@ -49,6 +49,12 @@ public class CloudV3 extends SchemaV3<Iced, CloudV3> {
 
   @API(help="build_number", direction=API.Direction.OUTPUT)
   public String build_number;
+
+  @API(help="build_age", direction=API.Direction.OUTPUT)
+  public String build_age;
+
+  @API(help="build_too_old", direction=API.Direction.OUTPUT)
+  public boolean build_too_old;
 
   @API(help="Node index number cloud status is collected from (zero-based)", direction=API.Direction.OUTPUT)
   public int node_idx;

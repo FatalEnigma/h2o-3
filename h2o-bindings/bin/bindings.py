@@ -1,18 +1,20 @@
-#!/usr/bin/env python  -- encoding: utf-8
-#
-# This is a helper module for scripts that auto-generate bindings for different languages.
-# Usage:
-#     import bindings as b
-#     b.init(language="C#", output_dir="CSharp")
-#     for schema in b.schemas():
-#         name = schema["name"]
-#         b.write_to_file("schemas/%s.cs" % name, gen_file_from_schema(schema))
-#
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+"""
+This is a helper module for scripts that auto-generate bindings for different languages.
+
+Usage:
+    import bindings as b
+    b.init(language="C#", output_dir="CSharp")
+    for schema in b.schemas():
+        name = schema["name"]
+        b.write_to_file("schemas/%s.cs" % name, gen_file_from_schema(schema))
+"""
 from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 from __future__ import absolute_import
-from collections import defaultdict
+
 import argparse
 import atexit
 import codecs
@@ -25,9 +27,10 @@ import shutil
 import sys
 import textwrap
 import time
+from collections import defaultdict
 
 
-class TypeTranslator:
+class TypeTranslator(object):
     """
     Helper class to assist translating H2O types into native types of your target languages. Typically the user extends
     this class, providing the types dictionary, as well as overwriting any type-conversion lambda-functions.
@@ -267,7 +270,9 @@ def endpoints(raw=False):
             for parm in e["path_params"]:
                 # find the metadata for the field from the input schema:
                 fields = [field for field in e["ischema"]["fields"] if field["name"] == parm]
-                assert len(fields) == 1, "Failed to find parameter: %s for endpoint: %r" % (parm, e)
+                assert len(fields) == 1, \
+                    "Failed to find parameter: %s for endpoint: %s in the input schema %s" \
+                    % (parm, e["url_pattern"], e["ischema"]["name"])
                 field = fields[0].copy()
                 schema = field["schema_name"] or ""   # {schema} is null for primitive types
                 ftype = field["type"]
@@ -288,9 +293,7 @@ def endpoints(raw=False):
 
 
 def endpoint_groups():
-    """
-    Return endpoints, grouped by the class which handles them
-    """
+    """Return endpoints, grouped by the class which handles them."""
     groups = defaultdict(list)
     for e in endpoints():
         groups[e["class_name"]].append(e)
@@ -300,7 +303,8 @@ def endpoint_groups():
 def schemas(raw=False):
     """
     Return the list of H₂O schemas.
-      :param raw: if True, then the complete response to .../schemas is returned (including the metadata)
+
+    :param raw: if True, then the complete response to .../schemas is returned (including the metadata)
     """
     json = _request_or_exit("/3/Metadata/schemas")
     if raw: return json
@@ -386,9 +390,9 @@ def write_to_file(filename, content):
 
 
 
-# ----------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------
 #   Private
-# ----------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------
 config = defaultdict(bool)  # will be populated during the init() stage
 pp = pprint.PrettyPrinter(indent=4).pprint  # pretty printer
 wrapper = textwrap.TextWrapper()

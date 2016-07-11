@@ -5,9 +5,9 @@ import water.api.API;
 
 /**
  */
-public class RapidsSchemaV3<I extends Iced, S extends RapidsSchemaV3<I, S>> extends SchemaV3<I, S> {
+public class RapidsSchemaV3<I extends Iced, S extends RapidsSchemaV3<I, S>> extends RequestSchemaV3<I, S> {
 
-  @API(help="A Rapids AST expression", direction=API.Direction.INPUT, required=true)
+  @API(help="A Rapids AstRoot expression", direction=API.Direction.INPUT, required=true)
   public String ast;
 
   @API(help="Session key", direction=API.Direction.INPUT)

@@ -6,6 +6,8 @@ import water.*;
 import water.api.schemas3.KeyV3;
 import water.exceptions.H2OIllegalArgumentException;
 import water.parser.BufferedString;
+import water.rapids.Merge;
+import water.persist.Persist;
 import water.util.FrameUtils;
 import water.util.Log;
 import water.util.PrettyPrint;
@@ -212,7 +214,7 @@ public class Frame extends Lockable<Frame> {
 
   /** Number of columns
    *  @return Number of columns */
-  public int  numCols() { return _keys.length; }
+  public int  numCols() { return _keys == null? 0 : _keys.length; }
   /** Number of rows
    *  @return Number of rows */
   public long numRows() { Vec v = anyVec(); return v==null ? 0 : v.length(); }
@@ -356,7 +358,8 @@ public class Frame extends Lockable<Frame> {
   /** Pair of (column name, Frame key). */
   public static class VecSpecifier extends Iced {
     public Key<Frame> _frame;
-    String _column_name;
+    public String _column_name;
+
 
     public Vec vec() {
       Value v = DKV.get(_frame);
@@ -577,6 +580,43 @@ public class Frame extends Lockable<Frame> {
     Vec v   = vecs [lo]; vecs  [lo] = vecs  [hi]; vecs  [hi] = v;
     Key k   = _keys[lo]; _keys [lo] = _keys [hi]; _keys [hi] = k;
     String n=_names[lo]; _names[lo] = _names[hi]; _names[hi] = n;
+  }
+
+  /** move the provided columns to be first, in-place. For Merge currently since method='hash' was coded like that */
+  public void moveFirst( int cols[] ) {
+    boolean colsMoved[] = new boolean[_keys.length];
+    Vec tmpvecs[] = vecs().clone();
+    Key tmpkeys[] = _keys.clone();
+    String tmpnames[] = _names.clone();
+
+    // Move the desired ones first
+    for (int i=0; i<cols.length; i++) {
+      int w = cols[i];
+      if (colsMoved[w]) throw new IllegalArgumentException("Duplicates in column numbers passed in");
+      if (w<0 || w>=_keys.length) throw new IllegalArgumentException("column number out of 0-based range");
+      colsMoved[w] = true;
+      tmpvecs[i] = _vecs[w];
+      tmpkeys[i] = _keys[w];
+      tmpnames[i] = _names[w];
+    }
+
+    // Put the other ones afterwards
+    int w = cols.length;
+    for (int i=0; i<_keys.length; i++) {
+      if (!colsMoved[i]) {
+        tmpvecs[w] = _vecs[i];
+        tmpkeys[w] = _keys[i];
+        tmpnames[w] = _names[i];
+        w++;
+      }
+    }
+
+    // Copy back over the original in-place
+    for (int i=0; i<_keys.length; i++) {
+      _vecs[i] = tmpvecs[i];
+      _keys[i] = tmpkeys[i];
+      _names[i] = tmpnames[i];
+    }
   }
 
   /** Returns a subframe of this frame containing only vectors with desired names.
@@ -1056,7 +1096,15 @@ public class Frame extends Lockable<Frame> {
 
 
   // Convert len rows starting at off to a 2-d ascii table
-  @Override public String toString( ) { return toString(0,20); }
+  @Override public String toString( ) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Frame key: " + _key + "\n");
+    sb.append("   cols: " + numCols() + "\n");
+    sb.append("   rows: " + numRows() + "\n");
+    sb.append(" chunks: " + (anyVec()==null?"N/A":anyVec().nChunks()) + "\n");
+    sb.append("   size: " + byteSize() + "\n");
+    return sb.toString();
+  }
 
   public String toString(long off, int len) { return toTwoDimTable(off, len).toString(); }
   public String toString(long off, int len, boolean rollups) { return toTwoDimTable(off, len, rollups).toString(); }
@@ -1342,27 +1390,34 @@ public class Frame extends Lockable<Frame> {
     return f2.vecs();
   }
 
-  private boolean isLastRowOfCurrentNonEmptyChunk(int chunkIdx, long row) {
-    long[] espc = anyVec().espc();
-    long lastRowOfCurrentChunk = espc[chunkIdx + 1] - 1;
-    // Assert chunk is non-empty.
-    assert espc[chunkIdx + 1] > espc[chunkIdx];
-    // Assert row numbering sanity.
-    assert row <= lastRowOfCurrentChunk;
-    return row >= lastRowOfCurrentChunk;
-  }
-
-  public static Job export(Frame fr, String path, String frameName, boolean overwrite) {
-    // Validate input
+  public static Job export(Frame fr, String path, String frameName, boolean overwrite, int nParts) {
+    boolean forceSingle = nParts == 1;
     boolean fileExists = H2O.getPM().exists(path);
-    if (overwrite && fileExists) {
-      Log.warn("File " + path + " exists, but will be overwritten!");
-    } else if (!overwrite && fileExists) {
-      throw new H2OIllegalArgumentException(path, "exportFrame", "File " + path + " already exists!");
+    // Validate input
+    if (forceSingle) {
+      if (overwrite && fileExists) {
+        Log.warn("File " + path + " exists, but will be overwritten!");
+      } else if (!overwrite && fileExists) {
+        throw new H2OIllegalArgumentException(path, "exportFrame", "File " + path + " already exists!");
+      }
+    } else if (fileExists) {
+      boolean isDirectory = H2O.getPM().isDirectory(path);
+      if (! isDirectory) {
+        throw new H2OIllegalArgumentException(path, "exportFrame", "Cannot use regular existing file " + path +
+                " to store part files! Empty directory is expected.");
+      }
+      Persist.PersistEntry[] dirContent = H2O.getPM().list(path);
+      if (dirContent.length != 0) {
+        throw new H2OIllegalArgumentException(path, "exportFrame", "Target directory " + path + " is non-empty. " +
+                "Empty directory is expected.");
+      }
     }
-    InputStream is = (fr).toCSV(true, false);
-    Job job =  new Job(fr._key,"water.fvec.Frame","Export dataset");
-    FrameUtils.ExportTask t = new FrameUtils.ExportTask(is, path, frameName, overwrite, job);
+    // Make directory for part files
+    if ((! forceSingle) && (! fileExists)) {
+      H2O.getPM().mkdirs(path);
+    }
+    Job job =  new Job<>(fr._key, "water.fvec.Frame", "Export dataset");
+    FrameUtils.ExportTaskDriver t = new FrameUtils.ExportTaskDriver(fr, path, frameName, overwrite, job, nParts);
     return job.start(t, fr.anyVec().nChunks());
   }
 
@@ -1370,43 +1425,71 @@ public class Frame extends Lockable<Frame> {
    *  is compatible with R 3.1's recent change to read.csv()'s behavior.
    *  @return An InputStream containing this Frame as a CSV */
   public InputStream toCSV(boolean headers, boolean hex_string) {
-    return new CSVStream(headers, hex_string);
+    return new CSVStream(this, headers, hex_string);
   }
 
-  public class CSVStream extends InputStream {
+  public static class CSVStream extends InputStream {
     private final boolean _hex_string;
     byte[] _line;
     int _position;
-    public volatile int _curChkIdx;
-    long _row;
+    int _chkRow;
+    Chunk[] _curChks;
+    int _lastChkIdx;
+    public volatile int _curChkIdx; // used only for progress reporting
 
-    CSVStream(boolean headers, boolean hex_string) {
-      _curChkIdx=0;
+    public CSVStream(Frame fr, boolean headers, boolean hex_string) {
+      this(firstChunks(fr), headers ? fr.names() : null, fr.anyVec().nChunks(), hex_string);
+    }
+
+    private static Chunk[] firstChunks(Frame fr) {
+      if (fr.anyVec().nChunks() == 0) {
+        return null;
+      }
+      Chunk[] chks = new Chunk[fr.vecs().length];
+      for (int i = 0; i < fr.vecs().length; i++) {
+        chks[i] = fr.vec(i).chunkForRow(0);
+      }
+      return chks;
+    }
+
+    public CSVStream(Chunk[] chks, String[] names, int nChunks, boolean hex_string) {
+      if ((chks == null) && (nChunks != 0)) {
+        // Empty Frame
+        throw new IllegalArgumentException("If chunks are not defined, number of chunks to export need to be 0.");
+      }
+      _lastChkIdx = (chks != null) ? chks[0].cidx() + nChunks - 1 : -1;
       _hex_string = hex_string;
       StringBuilder sb = new StringBuilder();
-      Vec vs[] = vecs();
-      if( headers ) {
-        sb.append('"').append(_names[0]).append('"');
-        for(int i = 1; i < vs.length; i++)
-          sb.append(',').append('"').append(_names[i]).append('"');
+      if (names != null) {
+        sb.append('"').append(names[0]).append('"');
+        for(int i = 1; i < names.length; i++)
+          sb.append(',').append('"').append(names[i]).append('"');
         sb.append('\n');
       }
       _line = sb.toString().getBytes();
+      _chkRow = -1; // first process the header line
+      _curChks = chks;
+    }
+
+    public int getCurrentRowSize() throws IOException {
+      int av = available();
+      assert av > 0;
+      return _line.length;
     }
 
     byte[] getBytesForRow() {
       StringBuilder sb = new StringBuilder();
-      Vec vs[] = vecs();
       BufferedString tmpStr = new BufferedString();
-      for( int i = 0; i < vs.length; i++ ) {
+      for (int i = 0; i < _curChks.length; i++ ) {
+        Vec v = _curChks[i]._vec;
         if(i > 0) sb.append(',');
-        if(!vs[i].isNA(_row)) {
-          if( vs[i].isCategorical() ) sb.append('"').append(vs[i].factor(vs[i].at8(_row))).append('"');
-          else if( vs[i].isUUID() ) sb.append(PrettyPrint.UUID(vs[i].at16l(_row), vs[i].at16h(_row)));
-          else if( vs[i].isInt() ) sb.append(vs[i].at8(_row));
-          else if (vs[i].isString()) sb.append('"').append(vs[i].atStr(tmpStr, _row)).append('"');
+        if(!_curChks[i].isNA(_chkRow)) {
+          if( v.isCategorical() ) sb.append('"').append(v.factor(_curChks[i].at8(_chkRow))).append('"');
+          else if( v.isUUID() ) sb.append(PrettyPrint.UUID(_curChks[i].at16l(_chkRow), _curChks[i].at16h(_chkRow)));
+          else if( v.isInt() ) sb.append(_curChks[i].at8(_chkRow));
+          else if (v.isString()) sb.append('"').append(_curChks[i].atStr(tmpStr, _chkRow)).append('"');
           else {
-            double d = vs[i].at(_row);
+            double d = _curChks[i].atd(_chkRow);
             // R 3.1 unfortunately changed the behavior of read.csv().
             // (Really type.convert()).
             //
@@ -1431,27 +1514,43 @@ public class Frame extends Lockable<Frame> {
         return _line.length - _position;
       }
 
-      // Case 2:  Out of data.
-      if (_row == numRows()) {
+      // Case 2:  There are no chunks to work with (eg. the whole Frame was empty).
+      if (_curChks == null) {
         return 0;
       }
 
-      // Case 3:  Return data for the current row.
-      //          Note this will fast-forward past empty chunks.
-      _curChkIdx = anyVec().elem2ChunkIdx(_row);
-      _line = getBytesForRow();
-      _position = 0;
+      _chkRow++;
+      Chunk anyChunk = _curChks[0];
 
-      // Flush non-empty remote chunk if we're done with it.
-      if (isLastRowOfCurrentNonEmptyChunk(_curChkIdx, _row)) {
-        for (Vec v : vecs()) {
-          Key k = v.chunkKey(_curChkIdx);
-          if( !k.home() )
-            H2O.raw_remove(k);
-        }
+      // Case 3:  Out of data.
+      if (anyChunk._start + _chkRow == anyChunk._vec.length()) {
+        return 0;
       }
 
-      _row++;
+      // Case 4:  Out of data in the current chunks => fast-forward to the next set of non-empty chunks.
+      if (_chkRow == anyChunk.len()) {
+        _curChkIdx = anyChunk._vec.elem2ChunkIdx(anyChunk._start + _chkRow); // skips empty chunks
+        // Case 4:  Processed all requested chunks.
+        if (_curChkIdx > _lastChkIdx) {
+          return 0;
+        }
+        // fetch the next non-empty chunks
+        Chunk[] newChks = new Chunk[_curChks.length];
+        for (int i = 0; i < _curChks.length; i++) {
+          newChks[i] = _curChks[i]._vec.chunkForChunkIdx(_curChkIdx);
+          // flush the remote chunk
+          Key oldKey = _curChks[i]._vec.chunkKey(_curChks[i]._cidx);
+          if (! oldKey.home()) {
+            H2O.raw_remove(oldKey);
+          }
+        }
+        _curChks = newChks;
+        _chkRow = 0;
+      }
+
+      // Case 5:  Return data for the current row.
+      _line = getBytesForRow();
+      _position = 0;
 
       return _line.length;
     }
@@ -1477,4 +1576,8 @@ public class Frame extends Lockable<Frame> {
   }
 
   @Override public Class<KeyV3.FrameKeyV3> makeSchema() { return KeyV3.FrameKeyV3.class; }
+
+  /** Sort rows of a frame, using the set of columns as keys.  
+   *  @return Copy of frame, sorted */
+  public Frame sort( int[] cols ) { return Merge.sort(this,cols); }
 }

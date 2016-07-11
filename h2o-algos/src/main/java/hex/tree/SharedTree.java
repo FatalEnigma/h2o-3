@@ -110,6 +110,7 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
     if (_parms._nbins_top_level >= 1<<16) error ("_nbins_top_level", "nbins_top_level must be < " + (1<<16));
     if (_parms._max_depth <= 0) error ("_max_depth", "_max_depth must be > 0.");
     if (_parms._min_rows <=0) error ("_min_rows", "_min_rows must be > 0.");
+    if (_parms._r2_stopping!=Double.MAX_VALUE) warn("_r2_stopping", "_r2_stopping is no longer supported - please use stopping_rounds, stopping_metric and stopping_tolerance instead.");
     if (_parms._score_tree_interval < 0 || _parms._score_tree_interval > _parms._ntrees) error ("_score_tree_interval", "_score_tree_interval must be >= 0 and <= _ntrees.");
     if (_parms._sample_rate_per_class != null) {
       warn("_sample_rate", "_sample_rate is ignored if _sample_rate_per_class is specified.");
@@ -334,11 +335,6 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
       for( int tid=0; tid< _ntrees; tid++) {
         // During first iteration model contains 0 trees, then 1-tree, ...
         boolean scored = doScoringAndSaveModel(false, oob, _parms._build_tree_one_node);
-        if( ((ModelMetricsSupervised)_model._output._training_metrics).r2()  >= _parms._r2_stopping ) {
-          doScoringAndSaveModel(true, oob, _parms._build_tree_one_node);
-          _job.update(_ntrees-_model._output._ntrees); //finish
-          return;             // Stop when approaching round-off error
-        }
         if (scored && ScoreKeeper.stopEarly(_model._output.scoreKeepers(), _parms._stopping_rounds, _nclass > 1, _parms._stopping_metric, _parms._stopping_tolerance, "model's last", true)) {
           doScoringAndSaveModel(true, oob, _parms._build_tree_one_node);
           _job.update(_ntrees-_model._output._ntrees); //finish
@@ -640,8 +636,9 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
     colHeaders.add("Timestamp"); colTypes.add("string"); colFormat.add("%s");
     colHeaders.add("Duration"); colTypes.add("string"); colFormat.add("%s");
     colHeaders.add("Number of Trees"); colTypes.add("long"); colFormat.add("%d");
-    colHeaders.add("Training MSE"); colTypes.add("double"); colFormat.add("%.5f");
+    colHeaders.add("Training RMSE"); colTypes.add("double"); colFormat.add("%.5f");
     if (_output.getModelCategory() == ModelCategory.Regression) {
+      colHeaders.add("Training MAE"); colTypes.add("double"); colFormat.add("%.5f");
       colHeaders.add("Training Deviance"); colTypes.add("double"); colFormat.add("%.5f");
     }
     if (_output.isClassifier()) {
@@ -656,8 +653,9 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
     }
 
     if (valid() != null) {
-      colHeaders.add("Validation MSE"); colTypes.add("double"); colFormat.add("%.5f");
+      colHeaders.add("Validation RMSE"); colTypes.add("double"); colFormat.add("%.5f");
       if (_output.getModelCategory() == ModelCategory.Regression) {
+        colHeaders.add("Validation MAE"); colTypes.add("double"); colFormat.add("%.5f");
         colHeaders.add("Validation Deviance"); colTypes.add("double"); colFormat.add("%.5f");
       }
       if (_output.isClassifier()) {
@@ -674,7 +672,7 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
 
     int rows = 0;
     for( int i = 0; i<_output._scored_train.length; i++ ) {
-      if (i != 0 && Double.isNaN(_output._scored_train[i]._mse) && (_output._scored_valid == null || Double.isNaN(_output._scored_valid[i]._mse))) continue;
+      if (i != 0 && Double.isNaN(_output._scored_train[i]._rmse) && (_output._scored_valid == null || Double.isNaN(_output._scored_valid[i]._rmse))) continue;
       rows++;
     }
     TwoDimTable table = new TwoDimTable(
@@ -686,15 +684,18 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
             "");
     int row = 0;
     for( int i = 0; i<_output._scored_train.length; i++ ) {
-      if (i != 0 && Double.isNaN(_output._scored_train[i]._mse) && (_output._scored_valid == null || Double.isNaN(_output._scored_valid[i]._mse))) continue;
+      if (i != 0 && Double.isNaN(_output._scored_train[i]._rmse) && (_output._scored_valid == null || Double.isNaN(_output._scored_valid[i]._rmse))) continue;
       int col = 0;
       DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
       table.set(row, col++, fmt.print(_output._training_time_ms[i]));
       table.set(row, col++, PrettyPrint.msecs(_output._training_time_ms[i] - _job.start_time(), true));
       table.set(row, col++, i);
       ScoreKeeper st = _output._scored_train[i];
-      table.set(row, col++, st._mse);
-      if (_output.getModelCategory() == ModelCategory.Regression) table.set(row, col++, st._mean_residual_deviance);
+      table.set(row, col++, st._rmse);
+      if (_output.getModelCategory() == ModelCategory.Regression) {
+        table.set(row, col++, st._mae);
+        table.set(row, col++, st._mean_residual_deviance);
+      }
       if (_output.isClassifier()) table.set(row, col++, st._logloss);
       if (_output.getModelCategory() == ModelCategory.Binomial) {
         table.set(row, col++, st._AUC);
@@ -704,8 +705,11 @@ public abstract class SharedTree<M extends SharedTreeModel<M,P,O>, P extends Sha
 
       if (_valid != null) {
         st = _output._scored_valid[i];
-        table.set(row, col++, st._mse);
-        if (_output.getModelCategory() == ModelCategory.Regression) table.set(row, col++, st._mean_residual_deviance);
+        table.set(row, col++, st._rmse);
+        if (_output.getModelCategory() == ModelCategory.Regression) {
+          table.set(row, col++, st._mae);
+          table.set(row, col++, st._mean_residual_deviance);
+        }
         if (_output.isClassifier()) table.set(row, col++, st._logloss);
         if (_output.getModelCategory() == ModelCategory.Binomial) {
           table.set(row, col++, st._AUC);

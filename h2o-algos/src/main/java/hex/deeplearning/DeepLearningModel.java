@@ -3,10 +3,8 @@ package hex.deeplearning;
 import hex.*;
 import hex.quantile.Quantile;
 import hex.quantile.QuantileModel;
-import hex.schemas.DeepLearningModelV3;
 import hex.util.LinearAlgebraUtils;
 import water.*;
-import water.api.schemas3.ModelSchemaV3;
 import water.codegen.CodeGenerator;
 import water.codegen.CodeGeneratorPipeline;
 import water.exceptions.H2OIllegalArgumentException;
@@ -73,9 +71,6 @@ public class DeepLearningModel extends Model<DeepLearningModel,DeepLearningModel
       return !autoencoder;
     }
   } // DeepLearningModelOutput
-
-  // Default publicly visible Schema is V2
-  public ModelSchemaV3 schema() { return new DeepLearningModelV3(); }
 
   void set_model_info(DeepLearningModelInfo mi) {
     assert(mi != null);
@@ -1209,7 +1204,7 @@ public class DeepLearningModel extends Model<DeepLearningModel,DeepLearningModel
     }
     if (p._hidden_dropout_ratios != null) {
       bodySb.i(3).p("if (i<ACTIVATION.length-1) {").nl();
-      bodySb.i(4).p("ACTIVATION[i][r] *= HIDDEN_DROPOUT_RATIOS[i-1];").nl();
+      bodySb.i(4).p("ACTIVATION[i][r] *= 1 - HIDDEN_DROPOUT_RATIOS[i-1];").nl();
       bodySb.i(3).p("}").nl();
     }
     bodySb.i(2).p("}").nl();
@@ -1766,8 +1761,7 @@ public class DeepLearningModel extends Model<DeepLearningModel,DeepLearningModel
         if (_hidden_dropout_ratios.length != _hidden.length) {
           dl.error("_hidden_dropout_ratios", "Must have " + _hidden.length + " hidden layer dropout ratios.");
         } else if (_activation != Activation.TanhWithDropout && _activation != Activation.MaxoutWithDropout && _activation != Activation.RectifierWithDropout && _activation != Activation.ExpRectifierWithDropout) {
-          if (!_quiet_mode)
-            dl.hide("_hidden_dropout_ratios", "Ignoring hidden_dropout_ratios because a non-dropout activation function was specified.");
+          dl.error("_hidden_dropout_ratios", "Cannot specify hidden_dropout_ratios with a non-dropout activation function. Use 'RectifierWithDropout', 'TanhWithDropout', etc.");
         } else if (ArrayUtils.maxValue(_hidden_dropout_ratios) >= 1 || ArrayUtils.minValue(_hidden_dropout_ratios) < 0) {
           dl.error("_hidden_dropout_ratios", "Hidden dropout ratios must be >= 0 and <1.");
         }

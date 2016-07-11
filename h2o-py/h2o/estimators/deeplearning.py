@@ -10,11 +10,11 @@ from .estimator_base import H2OEstimator
 class H2ODeepLearningEstimator(H2OEstimator):
     """
     Deep Learning
-    -------------
+
     Build a supervised Deep Neural Network model
     Builds a feed-forward multilayer artificial neural network on an H2OFrame
 
-    Parameters (optional, unless specified otherwise)
+    Parameters
     ----------
       model_id : str
         Destination id for this model; auto-generated if not specified.
@@ -26,7 +26,7 @@ class H2ODeepLearningEstimator(H2OEstimator):
         Id of the validation data frame.
 
       nfolds : int
-        Number of folds for N-fold cross-validation (0 to disable or ≥ 2).
+        Number of folds for N-fold cross-validation (0 to disable or >= 2).
         Default: 0
 
       keep_cross_validation_predictions : bool
@@ -154,7 +154,7 @@ class H2ODeepLearningEstimator(H2OEstimator):
         Default: 1e-06
 
       rate_decay : float
-        Learning rate decay factor between layers (N-th layer: rate·rate_decayᴺ⁻¹).
+        Learning rate decay factor between layers (N-th layer: rate * rate_decay ^ (n - 1).
         Default: 1.0
 
       momentum_start : float
@@ -210,8 +210,8 @@ class H2ODeepLearningEstimator(H2OEstimator):
         Loss function.
         Default: "Automatic"
 
-      distribution : "AUTO" | "bernoulli" | "modified_huber" | "multinomial" | "gaussian" | "poisson" | "gamma" |
-                     "tweedie" | "laplace" | "quantile" | "huber"
+      distribution : "AUTO" | "bernoulli" | "multinomial" | "gaussian" | "poisson" | "gamma" | "tweedie" | "laplace" |
+                     "quantile" | "huber"
         Distribution function
         Default: "AUTO"
 
@@ -340,7 +340,7 @@ class H2ODeepLearningEstimator(H2OEstimator):
         Default: False
 
       export_weights_and_biases : bool
-        Whether to export Neural Network weights and biases to H₂O Frames.
+        Whether to export Neural Network weights and biases to H2O Frames.
         Default: False
 
       mini_batch_size : int
@@ -365,11 +365,11 @@ class H2ODeepLearningEstimator(H2OEstimator):
 
     Examples
     --------
-      >>> import h2o as ml
+      >>> import h2o
       >>> from h2o.estimators.deeplearning import H2ODeepLearningEstimator
-      >>> ml.init()
+      >>> h2o.connect()
       >>> rows = [[1,2,3,4,0], [2,1,2,4,1], [2,1,4,2,1], [0,1,2,34,1], [2,3,4,1,0]] * 50
-      >>> fr = ml.H2OFrame(rows)
+      >>> fr = h2o.H2OFrame(rows)
       >>> fr[4] = fr[4].asfactor()
       >>> model = H2ODeepLearningEstimator()
       >>> model.train(x=range(4), y=4, training_frame=fr)

@@ -88,11 +88,11 @@ def gen_module(schema, name):
     yield "class %s(H2OEstimator):" % classname
     yield "    \"\"\""
     yield "    " + schema["algo_full_name"]
-    yield "    " + ("-" * len(schema["algo_full_name"]))
+    yield ""
     if help_preamble:
         yield "    %s" % reindent_block(help_preamble, 4)
     yield ""
-    yield "    Parameters (optional, unless specified otherwise)"
+    yield "    Parameters"
     yield "    ----------"
     param_names = []
     for param in schema["parameters"]:
@@ -155,7 +155,7 @@ def algo_to_classname(algo):
 
 def extra_imports_for(algo):
     if algo == "glm":
-        return "from h2o.connection import H2OConnection"
+        return "import h2o"
 
 def help_preamble_for(algo):
     if algo == "deeplearning":
@@ -174,7 +174,7 @@ def help_preamble_for(algo):
         return """
             Builds gradient boosted trees on a parsed data set, for regression or classification.
             The default distribution function will guess the model type based on the response column type.
-            Otherwise, the response column must be an enum for "bernoulli" or "multinomial", and numeric 
+            Otherwise, the response column must be an enum for "bernoulli" or "multinomial", and numeric
             for all other distributions."""
     if algo == "naivebayes":
         return """
@@ -189,11 +189,11 @@ def help_epilogue_for(algo):
     if algo == "deeplearning":
         return """Examples
                        --------
-                         >>> import h2o as ml
+                         >>> import h2o
                          >>> from h2o.estimators.deeplearning import H2ODeepLearningEstimator
-                         >>> ml.init()
+                         >>> h2o.connect()
                          >>> rows = [[1,2,3,4,0], [2,1,2,4,1], [2,1,4,2,1], [0,1,2,34,1], [2,3,4,1,0]] * 50
-                         >>> fr = ml.H2OFrame(rows)
+                         >>> fr = h2o.H2OFrame(rows)
                          >>> fr[4] = fr[4].asfactor()
                          >>> model = H2ODeepLearningEstimator()
                          >>> model.train(x=range(4), y=4, training_frame=fr)"""
@@ -239,7 +239,7 @@ def class_extra_for(algo):
                 Extract full regularization path explored during lambda search from glm model.
                 @param model - source lambda search model
                 \"\"\"
-                x = H2OConnection.get_json("GetGLMRegPath", model=model._model_json["model_id"]["name"])
+                x = h2o.api("GET /3/GetGLMRegPath", data={"model": model._model_json["model_id"]["name"]})
                 ns = x.pop("coefficient_names")
                 res = {
                     "lambdas": x["lambdas"],
@@ -260,8 +260,8 @@ def class_extra_for(algo):
                   @param coefs - dictionary containing model coefficients
                   @param threshold - (optional, only for binomial) decision threshold used for classification
                 \"\"\"
-                model_json = H2OConnection.post_json("MakeGLMModel", model=model._model_json["model_id"]["name"],
-                    names=list(coefs.keys()), beta=list(coefs.values()), threshold=threshold)
+                model_json = h2o.api("POST /3/MakeGLMModel", data={"model": model._model_json["model_id"]["name"],
+                    "names": list(coefs.keys()), "beta": list(coefs.values()), "threshold": threshold})
                 m = H2OGeneralizedLinearEstimator()
                 m._resolve_model(model_json["model_id"]["name"], model_json)
                 return m"""

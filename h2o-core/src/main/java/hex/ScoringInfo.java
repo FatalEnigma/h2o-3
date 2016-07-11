@@ -70,9 +70,11 @@ public class ScoringInfo extends Iced {
     switch (criterion) {
       case AUC:               { return cross_validation ? scored_xval._AUC : validation ? scored_valid._AUC : scored_train._AUC; }
       case MSE:               { return cross_validation ? scored_xval._mse : validation ? scored_valid._mse : scored_train._mse; }
+      case RMSE:               { return cross_validation ? scored_xval._rmse : validation ? scored_valid._rmse : scored_train._rmse; }
+      case MAE:               { return cross_validation ? scored_xval._mae : validation ? scored_valid._mae : scored_train._mae; }
+      case RMSLE:               { return cross_validation ? scored_xval._rmsle : validation ? scored_valid._rmsle : scored_train._rmsle; }
       case deviance:          { return cross_validation ? scored_xval._mean_residual_deviance : validation ? scored_valid._mean_residual_deviance : scored_train._mean_residual_deviance; }
       case logloss:           { return cross_validation ? scored_xval._logloss : validation ? scored_valid._logloss : scored_train._logloss; }
-      case r2:                { return cross_validation ? scored_xval._r2 : validation ? scored_valid._r2 : scored_train._r2; }
       case misclassification: { return cross_validation ? scored_xval._classError : validation ? scored_valid._classError : scored_train._classError; }
       case lift_top_group:    { return cross_validation ? scored_xval._lift : validation ? scored_valid._lift : scored_train._lift; }
       case mean_per_class_error: { return cross_validation ? scored_xval._mean_per_class_error : validation ? scored_valid._mean_per_class_error : scored_train._mean_per_class_error; }
@@ -117,7 +119,7 @@ public class ScoringInfo extends Iced {
 
     // handle StoppingMetric.AUTO
     if (criterion == ScoreKeeper.StoppingMetric.AUTO)
-      criterion = scoringInfos[0].is_classification ? ScoreKeeper.StoppingMetric.logloss : scoringInfos[0].is_autoencoder ? ScoreKeeper.StoppingMetric.MSE : ScoreKeeper.StoppingMetric.deviance;
+      criterion = scoringInfos[0].is_classification ? ScoreKeeper.StoppingMetric.logloss : scoringInfos[0].is_autoencoder ? ScoreKeeper.StoppingMetric.RMSE : ScoreKeeper.StoppingMetric.deviance;
 
     Arrays.sort(scoringInfos, ScoringInfo.comparator(criterion));
   }
@@ -146,13 +148,12 @@ public class ScoringInfo extends Iced {
     if (hasEpochs) { colHeaders.add("Epochs"); colTypes.add("double"); colFormat.add("%.5f"); }
     if (hasIterations) { colHeaders.add("Iterations"); colTypes.add("int"); colFormat.add("%d"); }
     if (hasSamples) { colHeaders.add("Samples"); colTypes.add("double"); colFormat.add("%f"); }
-    colHeaders.add("Training MSE"); colTypes.add("double"); colFormat.add("%.5f");
-
+    colHeaders.add("Training RMSE"); colTypes.add("double"); colFormat.add("%.5f");
+    if(modelCategory == ModelCategory.Regression) {
+      colHeaders.add("Training MAE"); colTypes.add("double"); colFormat.add("%.5f");
+    }
     if (modelCategory == ModelCategory.Regression) {
       colHeaders.add("Training Deviance"); colTypes.add("double"); colFormat.add("%.5f");
-    }
-    if (!isAutoencoder) {
-      colHeaders.add("Training R^2"); colTypes.add("double"); colFormat.add("%.5f");
     }
     if (isClassifier) {
       colHeaders.add("Training LogLoss"); colTypes.add("double"); colFormat.add("%.5f");
@@ -166,13 +167,14 @@ public class ScoringInfo extends Iced {
     if (isClassifier) {
       colHeaders.add("Training Classification Error"); colTypes.add("double"); colFormat.add("%.5f");
     }
+    if(modelCategory == ModelCategory.AutoEncoder) {
+      colHeaders.add("Training MSE"); colTypes.add("double"); colFormat.add("%.5f");
+    }
     if (hasValidation) {
-      colHeaders.add("Validation MSE"); colTypes.add("double"); colFormat.add("%.5f");
+      colHeaders.add("Validation RMSE"); colTypes.add("double"); colFormat.add("%.5f");
       if (modelCategory == ModelCategory.Regression) {
         colHeaders.add("Validation Deviance"); colTypes.add("double"); colFormat.add("%.5f");
-      }
-      if (!isAutoencoder) {
-        colHeaders.add("Validation R^2"); colTypes.add("double"); colFormat.add("%.5f");
+        colHeaders.add("Validation MAE"); colTypes.add("double"); colFormat.add("%.5f");
       }
       if (isClassifier) {
         colHeaders.add("Validation LogLoss"); colTypes.add("double"); colFormat.add("%.5f");
@@ -186,14 +188,15 @@ public class ScoringInfo extends Iced {
       if (isClassifier) {
         colHeaders.add("Validation Classification Error"); colTypes.add("double"); colFormat.add("%.5f");
       }
+      if(modelCategory == ModelCategory.AutoEncoder) {
+        colHeaders.add("Validation MSE"); colTypes.add("double"); colFormat.add("%.5f");
+      }
     } // (hasValidation)
     if (hasCrossValidation) {
-      colHeaders.add("Cross-Validation MSE"); colTypes.add("double"); colFormat.add("%.5f");
+      colHeaders.add("Cross-Validation RMSE"); colTypes.add("double"); colFormat.add("%.5f");
       if (modelCategory == ModelCategory.Regression) {
         colHeaders.add("Cross-Validation Deviance"); colTypes.add("double"); colFormat.add("%.5f");
-      }
-      if (!isAutoencoder) {
-        colHeaders.add("Cross-Validation R^2"); colTypes.add("double"); colFormat.add("%.5f");
+        colHeaders.add("Cross-Validation MAE"); colTypes.add("double"); colFormat.add("%.5f");
       }
       if (isClassifier) {
         colHeaders.add("Cross-Validation LogLoss"); colTypes.add("double"); colFormat.add("%.5f");
@@ -206,6 +209,9 @@ public class ScoringInfo extends Iced {
       }
       if (isClassifier) {
         colHeaders.add("Cross-Validation Classification Error"); colTypes.add("double"); colFormat.add("%.5f");
+      }
+      if(modelCategory == ModelCategory.AutoEncoder) {
+        colHeaders.add("Cross-Validation MSE"); colTypes.add("double"); colFormat.add("%.5f");
       }
     } // (hasCrossValidation)
 
@@ -242,12 +248,12 @@ public class ScoringInfo extends Iced {
       if (hasIterations) table.set(row, col++, ((HasIterations)si).iterations());
       if (hasSamples) table.set(row, col++, ((HasSamples)si).training_samples());
 
-      table.set(row, col++, si.scored_train != null ? si.scored_train._mse : Double.NaN);
+      table.set(row, col++, si.scored_train != null ? si.scored_train._rmse : Double.NaN);
       if (modelCategory == ModelCategory.Regression) {
         table.set(row, col++, si.scored_train != null ? si.scored_train._mean_residual_deviance : Double.NaN);
       }
-      if (!isAutoencoder) {
-        table.set(row, col++, si.scored_train != null ? si.scored_train._r2 : Double.NaN);
+      if (modelCategory == ModelCategory.Regression) {
+        table.set(row, col++, si.scored_train != null ? si.scored_train._mae : Double.NaN);
       }
       if (isClassifier) {
         table.set(row, col++, si.scored_train != null ? si.scored_train._logloss : Double.NaN);
@@ -259,13 +265,16 @@ public class ScoringInfo extends Iced {
       if (isClassifier) {
         table.set(row, col++, si.scored_train != null ? si.scored_train._classError : Double.NaN);
       }
+      if (isAutoencoder) {
+        table.set(row, col++, si.scored_train != null ? si.scored_train._mse : Double.NaN);
+      }
       if (hasValidation) {
-        table.set(row, col++, si.scored_valid != null ? si.scored_valid._mse : Double.NaN);
+        table.set(row, col++, si.scored_valid != null ? si.scored_valid._rmse : Double.NaN);
         if (modelCategory == ModelCategory.Regression) {
           table.set(row, col++, si.scored_valid != null ? si.scored_valid._mean_residual_deviance : Double.NaN);
         }
-        if (!isAutoencoder) {
-          table.set(row, col++, si.scored_valid != null ? si.scored_valid._r2 : Double.NaN);
+        if (modelCategory == ModelCategory.Regression) {
+          table.set(row, col++, si.scored_valid != null ? si.scored_valid._mae : Double.NaN);
         }
         if (isClassifier) {
           table.set(row, col++, si.scored_valid != null ? si.scored_valid._logloss : Double.NaN);
@@ -277,14 +286,17 @@ public class ScoringInfo extends Iced {
         if (isClassifier) {
           table.set(row, col, si.scored_valid != null ? si.scored_valid._classError : Double.NaN);
         }
+        if (isAutoencoder) {
+          table.set(row, col++, si.scored_valid != null ? si.scored_valid._mse : Double.NaN);
+        }
       } // hasValidation
       if (hasCrossValidation) {
-        table.set(row, col++, si.scored_xval != null ? si.scored_xval._mse : Double.NaN);
+        table.set(row, col++, si.scored_xval != null ? si.scored_xval._rmse : Double.NaN);
         if (modelCategory == ModelCategory.Regression) {
           table.set(row, col++, si.scored_xval != null ? si.scored_xval._mean_residual_deviance : Double.NaN);
         }
-        if (!isAutoencoder) {
-          table.set(row, col++, si.scored_xval != null ? si.scored_xval._r2 : Double.NaN);
+        if (modelCategory == ModelCategory.Regression) {
+          table.set(row, col++, si.scored_xval != null ? si.scored_xval._mae : Double.NaN);
         }
         if (isClassifier) {
           table.set(row, col++, si.scored_xval != null ? si.scored_xval._logloss : Double.NaN);
@@ -295,6 +307,9 @@ public class ScoringInfo extends Iced {
         }
         if (isClassifier) {
           table.set(row, col, si.scored_xval != null ? si.scored_xval._classError : Double.NaN);
+        }
+        if (isAutoencoder) {
+          table.set(row, col++, si.scored_xval != null ? si.scored_xval._mse : Double.NaN);
         }
       } // hasCrossValidation
       row++;

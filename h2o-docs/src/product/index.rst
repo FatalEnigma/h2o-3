@@ -3,121 +3,114 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to H2O 3
-^^^^^^^^^^^^^^^^
+========
+Overview
+========
+
+Welcome to the H2O documentation site! Depending on your area of
+interest, select a learning path from the sidebar, or look at the full
+content outline below.
+
+We're glad you're interested in learning more about H2O.  If you have
+questions or ideas to share, please post them to the open source community
+forum, `h2ostream <https://groups.google.com/forum/#!forum/h2ostream>`__.
+
+**Note**: To join our Google group on h2ostream, you need a Google
+account (such as Gmail or Google+). On the h2ostream page, click the
+**Join group** button, then click the **New Topic** button to post a new
+message. You don't need to request or leave a message to join - you
+should be added to the group automatically.
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    
-   SiteIntro
+   welcome
    
-Architecture
-^^^^^^^^^^^^
+.. toctree::
+   :maxdepth: 1
+   
+   downloading
+   
+.. toctree::
+   :maxdepth: 2
+
+   quick-start-videos
+   
+.. toctree::
+   :maxdepth: 2
+   
+   starting-h2o
+   aws
+   hadoop
+   docker
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
-   Architecture
-   
-Downloading
-^^^^^^^^^^^
+   data-munging
 
 .. toctree::
-   :maxdepth: 3
-   
-   Download
-   
-Starting
-^^^^^^^^
+   :maxdepth: 2
 
-.. toctree::
-   :maxdepth: 3
-   
-   StartH2O
-   H2O-DevS3Creds
-   H2O-DevHadoop
-   H2O-DevDocker
-
-Preparing Data
-^^^^^^^^^^^^^^
-
-.. toctree::
-   datamunge/top
-
-H2O Flow
-^^^^^^^^
-
-.. toctree::
-   Flow
+   flow
  
-Data Science Algorithms
-^^^^^^^^^^^^^^^^^^^^^^^
- 
 .. toctree::
-   datascience/top
+   :maxdepth: 2
 
-Cross-Validation
-^^^^^^^^^^^^^^^^   
+   data-science
 
 .. toctree::
-   CrossValidation
+   :maxdepth: 2
 
-Grid Search
-^^^^^^^^^^^
+   cross-validation
 
 .. toctree::   
-   GridSearch
+   :maxdepth: 2
 
-POJO Quick Start
-^^^^^^^^^^^^^^^^
+   grid-search
 
 .. toctree::
+   :maxdepth: 2
 
-   POJO_QuickStart
+   pojo-quick-start
    
-H2O Logs
-^^^^^^^^
+.. toctree::
+   :maxdepth: 2
+
+   logs
 
 .. toctree::
+   :maxdepth: 2
 
-   H2O-DevLogs
-
-Migration
-^^^^^^^^^
+   productionizing
 
 .. toctree::
+   :maxdepth: 2
 
-   Migration
+   architecture
    
-Security
-^^^^^^^^
-
 .. toctree::
+   :maxdepth: 2
 
-   Security
+   security
    
-FAQ
-^^^
-
 .. toctree::
+   :maxdepth: 1
 
-   FAQ
+   faq
    
-H2O Glossary
-^^^^^^^^^^^^
-
 .. toctree::
+   :maxdepth: 1
+
    glossary
 
-Videos
-^^^^^^
-
 .. toctree::
-   Videos
+   :maxdepth: 1
+
+   migrating
    
-API Reference
-^^^^^^^^^^^^^
-
 .. toctree::
-   API-Reference
+   :maxdepth: 2
+
+   api-reference
 

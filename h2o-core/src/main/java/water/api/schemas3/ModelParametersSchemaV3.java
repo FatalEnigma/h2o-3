@@ -47,7 +47,7 @@ public class ModelParametersSchemaV3<P extends Model.Parameters, S extends Model
   public FrameKeyV3 validation_frame;
 
   @API(level = API.Level.critical, direction = API.Direction.INOUT,
-      help = "Number of folds for N-fold cross-validation (0 to disable or ≥ 2).")
+      help = "Number of folds for N-fold cross-validation (0 to disable or >= 2).")
   public int nfolds;
 
   @API(level = API.Level.expert, direction = API.Direction.INOUT,
@@ -61,7 +61,7 @@ public class ModelParametersSchemaV3<P extends Model.Parameters, S extends Model
   @API(help="Allow parallel training of cross-validation models", direction=API.Direction.INOUT, level = API.Level.expert)
   public boolean parallelize_cross_validation;
 
-  @API(help = "Distribution function", values = { "AUTO", "bernoulli", "modified_huber", "multinomial", "gaussian", "poisson", "gamma", "tweedie", "laplace", "quantile", "huber" }, level = API.Level.secondary, gridable = true)
+  @API(help = "Distribution function", values = { "AUTO", "bernoulli", "multinomial", "gaussian", "poisson", "gamma", "tweedie", "laplace", "quantile", "huber" }, level = API.Level.secondary, gridable = true)
   public Distribution.Family distribution;
 
   @API(level = API.Level.secondary, direction = API.Direction.INPUT, gridable = true,

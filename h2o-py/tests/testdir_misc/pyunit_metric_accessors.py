@@ -59,42 +59,6 @@ def metric_accessors():
     assert len(mse) == 2, "expected validation and cross validation metrics to be returned, but got {0}".format(list(mse.keys()))
     assert isinstance(mse["valid"], float) and isinstance(mse["xval"], float), "validation and cross validation metrics to be floats, but got {0} and {1}".format(type(mse["valid"]), type(mse["xval"]))
 
-    #   r2
-    r21 = gbm.r2(train=True,  valid=False, xval=False)
-    assert isinstance(r21, float)
-
-    r22 = gbm.r2(train=False, valid=True,  xval=False)
-    assert isinstance(r22, float)
-
-    r23 = gbm.r2(train=False, valid=False, xval=True)
-    assert isinstance(r23, float)
-
-    r2 = gbm.r2(train=True,  valid=True,  xval=False)
-    assert "train" in list(r2.keys()) and "valid" in list(r2.keys()), "expected training and validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert len(r2) == 2, "expected only training and validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert isinstance(r2["train"], float) and isinstance(r2["valid"], float), "expected training and validation metrics to be floats, but got {0} and {1}".format(type(r2["train"]), type(r2["valid"]))
-    assert r2["valid"] == r22
-
-    r2 = gbm.r2(train=True,  valid=False, xval=True)
-    assert "train" in list(r2.keys()) and "xval" in list(r2.keys()), "expected training and cross validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert len(r2) == 2, "expected only training and cross validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert isinstance(r2["train"], float) and isinstance(r2["xval"], float), "expected training and cross validation metrics to be floats, but got {0} and {1}".format(type(r2["train"]), type(r2["xval"]))
-    assert r2["xval"] == r23
-
-    r2 = gbm.r2(train=True,  valid=True,  xval=True)
-    assert "train" in list(r2.keys()) and "valid" in list(r2.keys()) and "xval" in list(r2.keys()), "expected training, validation, and cross validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert len(r2) == 3, "expected training, validation and cross validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert isinstance(r2["train"], float) and isinstance(r2["valid"], float) and isinstance(r2["xval"], float), "expected training, validation, and cross validation metrics to be floats, but got {0}, {1}, and {2}".format(type(r2["train"]), type(r2["valid"]), type(r2["xval"]))
-
-    r2 = gbm.r2(train=False, valid=False, xval=False) # default: return training metrics
-    assert isinstance(r2, float)
-    assert r2 == r21
-
-    r2 = gbm.r2(train=False, valid=True,  xval=True)
-    assert "valid" in list(r2.keys()) and "xval" in list(r2.keys()), "expected validation and cross validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert len(r2) == 2, "expected validation and cross validation metrics to be returned, but got {0}".format(list(r2.keys()))
-    assert isinstance(r2["valid"], float) and isinstance(r2["xval"], float), "validation and cross validation metrics to be floats, but got {0} and {1}".format(type(r2["valid"]), type(r2["xval"]))
-
     #   mean_residual_deviance
     mean_residual_deviance1 = gbm.mean_residual_deviance(train=True,  valid=False, xval=False)
     assert isinstance(mean_residual_deviance1, float)
@@ -259,41 +223,41 @@ def metric_accessors():
     assert len(logloss) == 2, "expected validation and cross validation metrics to be returned, but got {0}".format(list(logloss.keys()))
     assert isinstance(logloss["valid"], float) and isinstance(logloss["xval"], float), "validation and cross validation metrics to be floats, but got {0} and {1}".format(type(logloss["valid"]), type(logloss["xval"]))
 
-    #   giniCoef
-    giniCoef1 = gbm.giniCoef(train=True,  valid=False, xval=False)
-    assert isinstance(giniCoef1, float)
+    #   gini
+    gini1 = gbm.gini(train=True,  valid=False, xval=False)
+    assert isinstance(gini1, float)
 
-    giniCoef2 = gbm.giniCoef(train=False, valid=True,  xval=False)
-    assert isinstance(giniCoef2, float)
+    gini2 = gbm.gini(train=False, valid=True,  xval=False)
+    assert isinstance(gini2, float)
 
-    giniCoef3 = gbm.giniCoef(train=False, valid=False, xval=True)
-    assert isinstance(giniCoef3, float)
+    gini3 = gbm.gini(train=False, valid=False, xval=True)
+    assert isinstance(gini3, float)
 
-    giniCoef = gbm.giniCoef(train=True,  valid=True,  xval=False)
-    assert "train" in list(giniCoef.keys()) and "valid" in list(giniCoef.keys()), "expected training and validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert len(giniCoef) == 2, "expected only training and validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert isinstance(giniCoef["train"], float) and isinstance(giniCoef["valid"], float), "expected training and validation metrics to be floats, but got {0} and {1}".format(type(giniCoef["train"]), type(giniCoef["valid"]))
-    assert giniCoef["valid"] == giniCoef2
+    gini = gbm.gini(train=True,  valid=True,  xval=False)
+    assert "train" in list(gini.keys()) and "valid" in list(gini.keys()), "expected training and validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert len(gini) == 2, "expected only training and validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert isinstance(gini["train"], float) and isinstance(gini["valid"], float), "expected training and validation metrics to be floats, but got {0} and {1}".format(type(gini["train"]), type(gini["valid"]))
+    assert gini["valid"] == gini2
 
-    giniCoef = gbm.giniCoef(train=True,  valid=False, xval=True)
-    assert "train" in list(giniCoef.keys()) and "xval" in list(giniCoef.keys()), "expected training and cross validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert len(giniCoef) == 2, "expected only training and cross validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert isinstance(giniCoef["train"], float) and isinstance(giniCoef["xval"], float), "expected training and cross validation metrics to be floats, but got {0} and {1}".format(type(giniCoef["train"]), type(giniCoef["xval"]))
-    assert giniCoef["xval"] == giniCoef3
+    gini = gbm.gini(train=True,  valid=False, xval=True)
+    assert "train" in list(gini.keys()) and "xval" in list(gini.keys()), "expected training and cross validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert len(gini) == 2, "expected only training and cross validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert isinstance(gini["train"], float) and isinstance(gini["xval"], float), "expected training and cross validation metrics to be floats, but got {0} and {1}".format(type(gini["train"]), type(gini["xval"]))
+    assert gini["xval"] == gini3
 
-    giniCoef = gbm.giniCoef(train=True,  valid=True,  xval=True)
-    assert "train" in list(giniCoef.keys()) and "valid" in list(giniCoef.keys()) and "xval" in list(giniCoef.keys()), "expected training, validation, and cross validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert len(giniCoef) == 3, "expected training, validation and cross validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert isinstance(giniCoef["train"], float) and isinstance(giniCoef["valid"], float) and isinstance(giniCoef["xval"], float), "expected training, validation, and cross validation metrics to be floats, but got {0}, {1}, and {2}".format(type(giniCoef["train"]), type(giniCoef["valid"]), type(giniCoef["xval"]))
+    gini = gbm.gini(train=True,  valid=True,  xval=True)
+    assert "train" in list(gini.keys()) and "valid" in list(gini.keys()) and "xval" in list(gini.keys()), "expected training, validation, and cross validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert len(gini) == 3, "expected training, validation and cross validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert isinstance(gini["train"], float) and isinstance(gini["valid"], float) and isinstance(gini["xval"], float), "expected training, validation, and cross validation metrics to be floats, but got {0}, {1}, and {2}".format(type(gini["train"]), type(gini["valid"]), type(gini["xval"]))
 
-    giniCoef = gbm.giniCoef(train=False, valid=False, xval=False) # default: return training metrics
-    assert isinstance(giniCoef, float)
-    assert giniCoef == giniCoef1
+    gini = gbm.gini(train=False, valid=False, xval=False) # default: return training metrics
+    assert isinstance(gini, float)
+    assert gini == gini1
 
-    giniCoef = gbm.giniCoef(train=False, valid=True,  xval=True)
-    assert "valid" in list(giniCoef.keys()) and "xval" in list(giniCoef.keys()), "expected validation and cross validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert len(giniCoef) == 2, "expected validation and cross validation metrics to be returned, but got {0}".format(list(giniCoef.keys()))
-    assert isinstance(giniCoef["valid"], float) and isinstance(giniCoef["xval"], float), "validation and cross validation metrics to be floats, but got {0} and {1}".format(type(giniCoef["valid"]), type(giniCoef["xval"]))
+    gini = gbm.gini(train=False, valid=True,  xval=True)
+    assert "valid" in list(gini.keys()) and "xval" in list(gini.keys()), "expected validation and cross validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert len(gini) == 2, "expected validation and cross validation metrics to be returned, but got {0}".format(list(gini.keys()))
+    assert isinstance(gini["valid"], float) and isinstance(gini["xval"], float), "validation and cross validation metrics to be floats, but got {0} and {1}".format(type(gini["valid"]), type(gini["xval"]))
 
     #   F1
     F11 = gbm.F1(train=True,  valid=False, xval=False)
