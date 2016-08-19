@@ -2085,6 +2085,46 @@ public class DeepLearningTest extends TestUtil {
   }
 
   @Test
+  public void testCategoricalEncodingBinaryCV() {
+    Frame tfr = null;
+    DeepLearningModel dl = null;
+
+    try {
+      String response = "survived";
+      tfr = parse_test_file("./smalldata/junit/titanic_alt.csv");
+      if (tfr.vec(response).isBinary()) {
+        Vec v = tfr.remove(response);
+        tfr.add(response, v.toCategoricalVec());
+        v.remove();
+      }
+      DKV.put(tfr);
+      DeepLearningParameters parms = new DeepLearningParameters();
+      parms._train = tfr._key;
+      parms._valid = tfr._key;
+      parms._response_column = response;
+      parms._reproducible = true;
+      parms._hidden = new int[]{20,20};
+      parms._seed = 0xdecaf;
+      parms._nfolds = 3;
+      parms._categorical_encoding = Model.Parameters.CategoricalEncodingScheme.Binary;
+      parms._score_training_samples = 0;
+      parms._use_all_factor_levels = false;
+
+      dl = new DeepLearning(parms).trainModel().get();
+
+      Assert.assertEquals(0.9469443757725586, ((ModelMetricsBinomial)dl._output._training_metrics)._auc._auc,1e-4);
+      Assert.assertEquals(0.9469629171817058, ((ModelMetricsBinomial)dl._output._validation_metrics)._auc._auc,1e-4);
+      Assert.assertEquals(0.865566131025958, ((ModelMetricsBinomial)dl._output._cross_validation_metrics)._auc._auc,1e-4);
+      Assert.assertEquals(0.8652523, Double.parseDouble((String)(dl._output._cross_validation_metrics_summary).get(1,0)), 1e-4);
+
+    } finally {
+      if (tfr != null) tfr.remove();
+      if (dl != null) dl.deleteCrossValidationModels();
+      if (dl != null) dl.delete();
+    }
+  }
+
+  @Test
   public void testCategoricalEncodingRegressionHuber() {
     Frame tfr = null;
     DeepLearningModel dl = null;
