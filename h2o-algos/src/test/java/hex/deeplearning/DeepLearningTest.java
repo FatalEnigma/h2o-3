@@ -2090,32 +2090,38 @@ public class DeepLearningTest extends TestUtil {
     DeepLearningModel dl = null;
 
     try {
-      String response = "survived";
-      tfr = parse_test_file("./smalldata/junit/titanic_alt.csv");
-      if (tfr.vec(response).isBinary()) {
-        Vec v = tfr.remove(response);
-        tfr.add(response, v.toCategoricalVec());
+      String response = "CAPSULE";
+      tfr = parse_test_file("./smalldata/logreg/prostate.csv");
+      for (String s : new String[]{response, "AGE", "RACE", "DPROS", "DCAPS"}) {
+        Vec v = tfr.remove(s);
+        tfr.add(s, v.toCategoricalVec());
         v.remove();
       }
       DKV.put(tfr);
       DeepLearningParameters parms = new DeepLearningParameters();
       parms._train = tfr._key;
       parms._valid = tfr._key;
+      parms._ignored_columns = new String[]{"ID"};
       parms._response_column = response;
-      parms._reproducible = true;
+      parms._reproducible = false;
       parms._hidden = new int[]{20,20};
       parms._seed = 0xdecaf;
-      parms._nfolds = 3;
-      parms._categorical_encoding = Model.Parameters.CategoricalEncodingScheme.Binary;
-      parms._score_training_samples = 0;
+      parms._nfolds = 2;
       parms._use_all_factor_levels = false;
 
+      parms._categorical_encoding = Model.Parameters.CategoricalEncodingScheme.AUTO;
+      dl = new DeepLearning(parms).trainModel().get();
+      dl.deleteCrossValidationModels();
+      dl.delete();
+
+      parms._categorical_encoding = Model.Parameters.CategoricalEncodingScheme.Eigen;
+      dl = new DeepLearning(parms).trainModel().get();
+      dl.deleteCrossValidationModels();
+      dl.delete();
+
+      parms._categorical_encoding = Model.Parameters.CategoricalEncodingScheme.Binary;
       dl = new DeepLearning(parms).trainModel().get();
 
-      Assert.assertEquals(0.9469443757725586, ((ModelMetricsBinomial)dl._output._training_metrics)._auc._auc,1e-4);
-      Assert.assertEquals(0.9469629171817058, ((ModelMetricsBinomial)dl._output._validation_metrics)._auc._auc,1e-4);
-      Assert.assertEquals(0.865566131025958, ((ModelMetricsBinomial)dl._output._cross_validation_metrics)._auc._auc,1e-4);
-      Assert.assertEquals(0.8652523, Double.parseDouble((String)(dl._output._cross_validation_metrics_summary).get(1,0)), 1e-4);
 
     } finally {
       if (tfr != null) tfr.remove();
