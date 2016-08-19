@@ -9,9 +9,8 @@ source("../../scripts/h2o-r-test-setup.R")
 hdfs_name_node <- Sys.getenv(c("NAME_NODE")) 
 print(hdfs_name_node)
 
-#ipPort <- get_args(commandArgs(trailingOnly = TRUE))
-#myIP   <- ipPort[[1]]
-#myPort <- ipPort[[2]]
+#myIP   <- H2O.IP
+#myPort <- H2O.PORT
 
 hdfs_air_orc = "/datasets/airlines_all_orc_parts"
 hdfs_air_original = "/datasets/airlines/airlines_all.csv"
@@ -28,7 +27,7 @@ check.hdfs_airorc <- function() {
   
   print("************** csv parsing time: ")
   ptm <- proc.time()
-  csv.hex <- h2o.importFile(url)
+  csv.hex <- h2o.importFile(url,destination_frame = "csv.hex")
   timepassed = proc.time() - ptm
   print(timepassed)
   
@@ -37,17 +36,17 @@ check.hdfs_airorc <- function() {
   
   heading("Import airlines 116M dataset in ORC format ")
   
-  print("************** orc parsing time without forcing column types: ")
-  ptm <- proc.time()
-  orc2.hex <- h2o.importFolder(url,destination_frame = "dd2")
-  timepassed = proc.time() - ptm
-  print(timepassed)
-  h2o.rm(orc2.hex)
+  #print("************** orc parsing time without forcing column types: ")
+  #ptm <- proc.time()
+  #orc2.hex <- h2o.importFolder(url,destination_frame = "dd2")
+  #timepassed = proc.time() - ptm
+  #print(timepassed)
+  #h2o.rm(orc2.hex)
   
   url <- sprintf("hdfs://%s%s", hdfs_name_node, hdfs_air_orc)
   print("************** orc parsing time: ")
   ptm <- proc.time()
-  orc.hex <- h2o.importFolder(url,destination_frame = "dd",col.names = names(csv.hex),
+  orc.hex <- h2o.importFile(url,destination_frame = "orc.hex",col.names = names(csv.hex),
                       col.types = c("Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Numeric",
                       "Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Enum","Numeric","Numeric","Numeric","Numeric"
                       ,"Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Enum"))
@@ -62,6 +61,7 @@ check.hdfs_airorc <- function() {
   expect_equal(summary(orc.hex),summary(csv.hex))
   
   h2o.rm(orc.hex)   # remove file
+  h2o.rm(csv.hex)
 }
 
 doTest("ORC multifile parse test", check.hdfs_airorc)
