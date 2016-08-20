@@ -28,7 +28,6 @@ def import_folder():
     orc_summary = h2o.frame(multi_file_orc.frame_id)["frames"][0]["columns"]
 
     pyunit_utils.compare_frame_summary(csv_summary, orc_summary)
-    pyunit_utils.compare_frame_summary(csv_summary, orc_summary)
 
 if __name__ == "__main__":
     pyunit_utils.standalone_test(import_folder)

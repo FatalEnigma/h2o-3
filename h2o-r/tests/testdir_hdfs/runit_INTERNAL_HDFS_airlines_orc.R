@@ -47,9 +47,9 @@ check.hdfs_airorc <- function() {
   print("************** orc parsing time: ")
   ptm <- proc.time()
   orc.hex <- h2o.importFile(url,destination_frame = "orc.hex",col.names = names(csv.hex),
-  col.types = c("Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Numeric",
-  "Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Enum","Numeric","Numeric","Numeric","Numeric"
-  ,"Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Enum"))
+                      col.types = c("Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Numeric",
+                      "Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Enum","Numeric","Numeric","Numeric","Numeric"
+                      ,"Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Numeric","Enum","Enum"))
   timepassed = proc.time() - ptm
   print(timepassed)
 

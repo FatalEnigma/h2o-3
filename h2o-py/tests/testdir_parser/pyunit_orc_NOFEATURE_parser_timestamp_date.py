@@ -11,10 +11,12 @@ def orc_parser_timestamp_date():
     H2O frame.  Next, it will take the .csv file generated from the orc file from
     Hive and parse into H2O frame.  Finally, we compare the two frames and make sure
     that they are equal.
+
     We want to make sure that we are parsing the date and timestamp
     date correctly from an orc file.  Thanks to Nidhi who has imported an orc file
     containing timestamp/date into spark and later into Hive and write it out as
     csv.
+
     :return: None
     """
 
@@ -29,8 +31,6 @@ def orc_parser_timestamp_date():
     allCsvFiles = ["smalldata/parser/orc/orc2csv/TestOrcFile.testDate1900.csv",
                    "smalldata/parser/orc/orc2csv/TestOrcFile.testDate2038.csv",
                    "smalldata/parser/orc/orc2csv/orc_split_elim.csv"]
-
-
 
     for fIndex in range(len(allOrcFiles)):
 
