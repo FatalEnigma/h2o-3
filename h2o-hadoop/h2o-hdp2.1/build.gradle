@@ -1,6 +1,6 @@
 ext {
   hadoopVersion = 'hdp2.1'
-  hadoopMavenArtifactVersion = '2.4.0.2.1.1.0-385'
+  hadoopMavenArtifactVersion = '2.4.0.2.1.7.4-3'
 }
 
 apply from: '../driverjar.gradle'
