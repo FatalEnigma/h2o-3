@@ -152,7 +152,8 @@ def _handle_python_dicts(python_obj, check_header):
         else:
             raise ValueError("Encountered invalid dictionary value when constructing H2OFrame. Got: {0}".format(v))
 
-    rows = list(map(list, itertools.izip_longest(*list(python_obj.values()))))
+    zipper = getattr(itertools, "zip_longest", None) or getattr(itertools, "izip_longest", None) or zip
+    rows = list(map(list, zipper(*list(python_obj.values()))))
     data_to_write = [dict(list(zip(header, row))) for row in rows]
     return header, data_to_write
 
