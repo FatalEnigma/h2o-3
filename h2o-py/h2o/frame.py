@@ -1623,38 +1623,38 @@ class H2OFrame(object):
             common_names = set(self.names) & set(other.names)
             if not common_names:
                 raise H2OValueError("Unable to find columns to merge on. Please specify `by_x` and `by_y` explicitly")
-            by_x = by_y = list(common_names)
+            byx = list(common_names)
+            byy = list(common_names)
+        else:
+            # Force both ``by_x`` and ``by_y`` into lists, and check that they have same length
+            byx = list(by_x) if isinstance(by_x, list) else [by_x]
+            byy = list(by_y) if isinstance(by_y, list) else [by_y]
 
-        # Force both ``by_x`` and ``by_y`` into lists, and check that they have same length
-        if not isinstance(by_x, list): by_x = [by_x]
-        if not isinstance(by_y, list): by_y = [by_y]
-        if len(by_x) != len(by_y):
+        if len(byx) != len(byy):
             raise H2OValueError("There should be the same number of columns in ``by_x`` and ``by_y``.")
-        if not by_x:
+        if not byx:
             raise H2OValueError("There are no columns to perform the join on.")
         # Verify that all columns are valid, and convert any string columns into numeric indices.
-        for by_any in (by_x, by_y):
-            df = self if by_any is by_x else other
-            for i, col in enumerate(by_any):
+        for df, bya in [(self, byx), (other, byy)]:
+            for i, col in enumerate(bya):
                 if is_type(col, int):
                     if col < -df.ncol or col >= df.ncol:
                         raise H2OValueError("Column %d does not exist in the frame" % col)
-                    if col < 0: by_any[i] = col + df.ncol
+                    if col < 0: bya[i] = col + df.ncol
                 else:
                     if col not in df.names:
                         raise H2OValueError("Column '%s' does not exist in the frame" % col)
-                    by_any[i] = df.names.index(col)
+                    bya[i] = df.names.index(col)
         # Check that there are no duplicate columns in the keys
-        if len(set(by_x)) != len(by_x):
-            raise H2OValueError("Duplicate columns found in ``by_x``: %s" % by_x)
-        if len(set(by_y)) != len(by_y):
-            raise H2OValueError("Duplicate columns found in ``by_y``: %s" % by_y)
+        if len(set(byx)) != len(byx): raise H2OValueError("Duplicate columns found in ``by_x``: %s" % byx)
+        if len(set(byy)) != len(byy): raise H2OValueError("Duplicate columns found in ``by_y``: %s" % byy)
         # Check that types of the columns in both keys coincide, and that we don't merge on real-valued keys
-        for i1, i2 in zip(by_x, by_y):
-            name1 = self.names[i1]
-            name2 = other.names[i2]
-            type1 = self.types[name1]
-            type2 = other.types[name2]
+        snames, onames = self.names, other.names
+        stypes, otypes = self.types, other.types
+        assert len(snames) == len(stypes) == self.ncol and len(onames) == len(otypes) == other.ncol
+        for i1, i2 in zip(byx, byy):
+            name1, name2 = snames[i1], onames[i2]
+            type1, type2 = stypes[name1], otypes[name2]
             if type1 != type2:
                 raise H2OValueError("Columns %s/%s in the merge key have different types" % (name1, name2))
             if type1 == "string":
@@ -1665,7 +1665,7 @@ class H2OFrame(object):
             raise H2OValueError('``all_y = True`` is not implemented for method = "radix" (yet).')
 
         # Enough with type-checking... Do the merge at last!
-        return H2OFrame._expr(expr=ExprNode("merge", self, other, all_x, all_y, by_x, by_y, method))
+        return H2OFrame._expr(expr=ExprNode("merge", self, other, all_x, all_y, byx, byy, method))
 
 
     def relevel(self, y):
@@ -1675,17 +1675,10 @@ class H2OFrame(object):
         The levels of a factor are reordered such that the reference level is at level 0, remaining levels are moved
         down as needed.
 
-        Parameters
-        ----------
-         x: Column
-          Column in H2O Frame
+        :param x: Column in H2O Frame
+        :param str y: Reference level
 
-         y : String
-          Reference level
-
-        Returns
-        -------
-         New reordered factor column
+        :returns: New reordered factor column
         """
         return H2OFrame._expr(expr=ExprNode("relevel", self, quote(y)))
 
