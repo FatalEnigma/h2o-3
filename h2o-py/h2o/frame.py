@@ -1595,30 +1595,78 @@ class H2OFrame(object):
         """
         Merge two datasets based on common column names.
 
-        Parameters
-        ----------
-          other: H2OFrame
-            Other dataset to merge.  Must have at least one column in common with self,
-            and all columns in common are used as the merge key.  If you want to use only a
-            subset of the columns in common, rename the other columns so the columns are unique
-            in the merged result.
+        In order to perform a join, you need to specify the columns that will be used as merge keys (``by_x`` and
+        ``by_y`` parameters). If you do not specify them, the merge will be performed on all columns that have same
+        names in both data frames. If you do specify explicit merge keys, then the number of these keys and their
+        data types must be the same in both data frames.
 
-          all_x: bool, default=False
-            If True, include all rows from the left/self frame
+        :param H2OFrame other: the other dataset to merge.
+        :param all_x: if True, include all rows from the left (self) frame.
+        :param all_y: if True, include all rows from the right (other) frame.
+        :param by_x: column(s) in the left frame to be merged on. If not provided, the merge will be performed on all
+            columns with same names. If you specify ``by_x``, then it can be either a single column index, or a
+            column name, or a list of those. Also if you specify ``by_x``, then you must also provide ``by_y``.
+        :param by_y: column(s) in the right frame to be merged on.
+        :param method: one of "auto", "radix" or "hash".
 
-          all_y: bool, default=False
-            If True, include all rows from the right/other frame
-
-        Returns
-        -------
-          Original self frame enhanced with merged columns and rows
+        :returns: Original self frame enhanced with merged columns and rows.
         """
-        common_names = list(set(self.names) & set(other.names))
-        if not common_names:
-            raise H2OValueError("No columns in common to merge on!")
-        if by_x is None: by_x = [self.names.index(c) for c in common_names]
-        if by_y is None: by_y = [other.names.index(c) for c in common_names]
+        assert_is_type(other, H2OFrame)
+        assert_is_type(all_x, bool)
+        assert_is_type(all_y, bool)
+        assert_is_type(by_x, None, int, str, [int, str])
+        assert_is_type(by_y, None, int, str, [int, str])
+        assert_is_type(method, "auto", "radix", "hash")
+        if by_x is None or by_y is None:
+            if by_x is not None or by_y is not None:
+                raise H2OValueError("Both (or neither) arguments `by_x`, `by_y` must be provided")
+            common_names = set(self.names) & set(other.names)
+            if not common_names:
+                raise H2OValueError("Unable to find columns to merge on. Please specify `by_x` and `by_y` explicitly")
+            by_x = by_y = list(common_names)
+
+        # Force both ``by_x`` and ``by_y`` into lists, and check that they have same length
+        if not isinstance(by_x, list): by_x = [by_x]
+        if not isinstance(by_y, list): by_y = [by_y]
+        if len(by_x) != len(by_y):
+            raise H2OValueError("There should be the same number of columns in ``by_x`` and ``by_y``.")
+        if not by_x:
+            raise H2OValueError("There are no columns to perform the join on.")
+        # Verify that all columns are valid, and convert any string columns into numeric indices.
+        for by_any in (by_x, by_y):
+            df = self if by_any is by_x else other
+            for i, col in enumerate(by_any):
+                if is_type(col, int):
+                    if col < -df.ncol or col >= df.ncol:
+                        raise H2OValueError("Column %d does not exist in the frame" % col)
+                    if col < 0: by_any[i] = col + df.ncol
+                else:
+                    if col not in df.names:
+                        raise H2OValueError("Column '%s' does not exist in the frame" % col)
+                    by_any[i] = df.names.index(col)
+        # Check that there are no duplicate columns in the keys
+        if len(set(by_x)) != len(by_x):
+            raise H2OValueError("Duplicate columns found in ``by_x``: %s" % by_x)
+        if len(set(by_y)) != len(by_y):
+            raise H2OValueError("Duplicate columns found in ``by_y``: %s" % by_y)
+        # Check that types of the columns in both keys coincide, and that we don't merge on real-valued keys
+        for i1, i2 in zip(by_x, by_y):
+            name1 = self.names[i1]
+            name2 = other.names[i2]
+            type1 = self.types[name1]
+            type2 = other.types[name2]
+            if type1 != type2:
+                raise H2OValueError("Columns %s/%s in the merge key have different types" % (name1, name2))
+            if type1 == "string":
+                raise H2OValueError("Cannot merge on a string column %s: convert it to categorical first." % name1)
+            if type1 == "real":
+                raise H2OValueError("Cannot merge on real-valued keys %s/%s" % (name1, name2))
+        if method == "radix" and all_y:
+            raise H2OValueError('``all_y = True`` is not implemented for method = "radix" (yet).')
+
+        # Enough with type-checking... Do the merge at last!
         return H2OFrame._expr(expr=ExprNode("merge", self, other, all_x, all_y, by_x, by_y, method))
+
 
     def relevel(self, y):
         """
